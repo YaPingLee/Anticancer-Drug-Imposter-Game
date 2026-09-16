@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Drug Class Imposter</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#F6F7F5;
+    --panel:#FFFFFF;
+    --ink:#182129;
+    --muted:#5C6773;
+    --rule:#DDE2E1;
+    --accent:#3A5A78;
+    --accent-ink:#FFFFFF;
+    --correct:#2E7D4F;
+    --correct-bg:#E4F2E9;
+    --wrong:#B3492E;
+    --wrong-bg:#FBEAE5;
+
+    --c-nontarget-bg:#AFC9DC; --c-nontarget-ink:#1E4059;
+    --c-targeted-bg:#E9BFCF;  --c-targeted-ink:#6B1F3A;
+    --c-hormonal-bg:#F1D2A0;  --c-hormonal-ink:#6B4A12;
+    --c-ici-bg:#B9DCC3;       --c-ici-ink:#1F5136;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 64px;
+    line-height:1.5;
+  }
+
+  .app{ width:100%; max-width:600px; }
+
+  h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size:28px;
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    color:var(--muted);
+    font-size:14px;
+    margin:0 0 24px;
+    max-width:46ch;
+  }
+
+  .hud{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:16px;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:14px;
+    color:var(--muted);
+  }
+  .hud strong{ color:var(--ink); font-weight:600; }
+
+  .progress{
+    height:3px;
+    background:var(--rule);
+    border-radius:0;
+    margin-bottom:28px;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;
+    background:var(--accent);
+    transition:width .3s ease;
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    padding:28px;
+  }
+
+  .prompt{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:19px;
+    font-weight:600;
+    margin:0 0 20px;
+    line-height:1.35;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:4px;
+  }
+  @media (max-width:480px){
+    .grid{ grid-template-columns:1fr; }
+  }
+
+  .card{
+    position:relative;
+    border:1px solid var(--rule);
+    background:var(--panel);
+    padding:18px 16px 16px;
+    text-align:left;
+    cursor:pointer;
+    font-family:'IBM Plex Sans', sans-serif;
+    transition:border-color .15s ease, background .15s ease, transform .1s ease;
+  }
+  .card:hover{ border-color:var(--accent); }
+  .card:active{ transform:scale(0.99); }
+  .card:disabled{ cursor:default; }
+
+  .card .key{
+    display:inline-block;
+    font-family:'Space Grotesk', sans-serif;
+    font-size:11px;
+    font-weight:600;
+    color:var(--muted);
+    border:1px solid var(--rule);
+    padding:1px 6px;
+    margin-bottom:10px;
+  }
+  .card .name{
+    display:block;
+    font-size:17px;
+    font-weight:600;
+    color:var(--ink);
+  }
+  .card .tag{
+    display:none;
+    margin-top:10px;
+    font-size:12px;
+    font-weight:600;
+    padding:3px 8px;
+    width:fit-content;
+  }
+  .card .why{
+    display:none;
+    margin-top:8px;
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.4;
+  }
+
+  .card.reveal .tag{ display:inline-block; }
+  .card.reveal .why{ display:block; }
+
+  .card.correct-pick{ border-color:var(--correct); background:var(--correct-bg); }
+  .card.wrong-pick{ border-color:var(--wrong); background:var(--wrong-bg); }
+  .card.is-imposter-missed{ border-color:var(--wrong); }
+
+  .class-nonTargeted .tag{ background:var(--c-nontarget-bg); color:var(--c-nontarget-ink); }
+  .class-targeted .tag{ background:var(--c-targeted-bg); color:var(--c-targeted-ink); }
+  .class-hormonal .tag{ background:var(--c-hormonal-bg); color:var(--c-hormonal-ink); }
+  .class-ici .tag{ background:var(--c-ici-bg); color:var(--c-ici-ink); }
+
+  .feedback{
+    margin-top:20px;
+    padding-top:16px;
+    border-top:1px solid var(--rule);
+    font-size:14px;
+  }
+  .feedback .headline{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:600;
+    font-size:16px;
+    margin:0 0 6px;
+  }
+  .feedback.correct .headline{ color:var(--correct); }
+  .feedback.wrong .headline{ color:var(--wrong); }
+
+  .actions{ margin-top:20px; display:flex; justify-content:flex-end; }
+  button.primary{
+    font-family:'Space Grotesk', sans-serif;
+    background:var(--accent);
+    color:var(--accent-ink);
+    border:none;
+    padding:10px 20px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  button.primary:hover{ background:#2E4A63; }
+
+  .start, .end{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    padding:32px 28px;
+  }
+  .start p, .end p{ color:var(--muted); font-size:14px; }
+  .start ul{ font-size:14px; color:var(--ink); padding-left:20px; margin:16px 0 24px; }
+  .start li{ margin-bottom:6px; }
+
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin:18px 0 4px;
+  }
+  .legend span{
+    font-size:12px;
+    font-weight:600;
+    padding:3px 9px;
+  }
+  .legend .l1{ background:var(--c-nontarget-bg); color:var(--c-nontarget-ink); }
+  .legend .l2{ background:var(--c-targeted-bg); color:var(--c-targeted-ink); }
+  .legend .l3{ background:var(--c-hormonal-bg); color:var(--c-hormonal-ink); }
+  .legend .l4{ background:var(--c-ici-bg); color:var(--c-ici-ink); }
+
+  .end .score-big{
+    font-family:'Space Grotesk', sans-serif;
+    font-size:48px;
+    font-weight:700;
+    margin:6px 0 2px;
+  }
+  .end .score-msg{ font-size:15px; color:var(--ink); margin-bottom:20px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+
+<script>
+(function(){
+
+  const CATEGORIES = {
+    nonTargeted: {
+      label: "Non-targeted (cytotoxic)",
+      drugs: [
+        { name: "Carboplatin", why: "Platinum compound — forms DNA adducts that block replication" },
+        { name: "Paclitaxel", why: "Taxane — stabilises microtubules, arresting mitosis" },
+        { name: "Doxorubicin", why: "Anthracycline — intercalates DNA and inhibits topoisomerase II" },
+        { name: "Cyclophosphamide", why: "Alkylating agent — cross-links DNA strands" },
+        { name: "Etoposide", why: "Topoisomerase II inhibitor — causes irreversible DNA strand breaks" },
+        { name: "Fluorouracil", why: "Antimetabolite — blocks thymidylate synthase, halting DNA synthesis" },
+        { name: "Vincristine", why: "Vinca alkaloid — inhibits microtubule polymerisation, blocking mitosis" },
+      ]
+    },
+    targeted: {
+      label: "Targeted therapy",
+      drugs: [
+        { name: "Trastuzumab", why: "Monoclonal antibody — blocks HER2 receptor signalling" },
+        { name: "Bevacizumab", why: "Monoclonal antibody — blocks VEGF, inhibiting angiogenesis" },
+        { name: "Cetuximab", why: "Monoclonal antibody — blocks EGFR signalling" },
+        { name: "Imatinib", why: "Tyrosine kinase inhibitor — blocks the BCR-ABL fusion protein" },
+        { name: "Erlotinib", why: "Tyrosine kinase inhibitor — blocks EGFR intracellular signalling" },
+        { name: "Rituximab", why: "Monoclonal antibody — targets CD20 on B-cells" },
+      ]
+    },
+    hormonal: {
+      label: "Hormonal therapy",
+      drugs: [
+        { name: "Tamoxifen", why: "SERM — competes with oestrogen at the receptor in breast tissue" },
+        { name: "Anastrozole", why: "Aromatase inhibitor — blocks conversion of androgens to oestrogen" },
+        { name: "Letrozole", why: "Aromatase inhibitor — reduces peripheral oestrogen production" },
+        { name: "Goserelin", why: "GnRH agonist — suppresses gonadotrophin and sex hormone production" },
+        { name: "Bicalutamide", why: "Anti-androgen — blocks androgen receptor binding" },
+        { name: "Leuprorelin", why: "GnRH agonist — suppresses testosterone/oestrogen production" },
+      ]
+    },
+    ici: {
+      label: "Immune checkpoint inhibitor",
+      drugs: [
+        { name: "Pembrolizumab", why: "Anti-PD-1 antibody — blocks the checkpoint on T cells" },
+        { name: "Atezolizumab", why: "Anti-PD-L1 antibody — blocks the checkpoint on tumour cells" },
+        { name: "Nivolumab", why: "Anti-PD-1 antibody — restores T-cell activity against tumour cells" },
+        { name: "Ipilimumab", why: "Anti-CTLA-4 antibody — blocks a T-cell checkpoint during activation" },
+        { name: "Durvalumab", why: "Anti-PD-L1 antibody — blocks tumour-side checkpoint signalling" },
+        { name: "Avelumab", why: "Anti-PD-L1 antibody — blocks tumour-side checkpoint signalling" },
+      ]
+    }
+  };
+
+  const CAT_KEYS = Object.keys(CATEGORIES);
+  const TOTAL_ROUNDS = 8;
+
+  let state = {
+    screen: "start", // start | round | end
+    round: 0,
+    score: 0,
+    current: null,
+    answered: false,
+  };
+
+  function shuffle(arr){
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function buildRound(){
+    const shareKey = CAT_KEYS[Math.floor(Math.random() * CAT_KEYS.length)];
+    let otherKey;
+    do { otherKey = CAT_KEYS[Math.floor(Math.random() * CAT_KEYS.length)]; }
+    while (otherKey === shareKey);
+
+    const shareDrugs = shuffle(CATEGORIES[shareKey].drugs).slice(0, 3)
+      .map(d => ({ ...d, classKey: shareKey }));
+    const imposter = shuffle(CATEGORIES[otherKey].drugs)[0];
+    const imposterCard = { ...imposter, classKey: otherKey, isImposter: true };
+
+    const cards = shuffle([...shareDrugs, imposterCard]);
+    return { shareKey, cards, imposterIndex: cards.findIndex(c => c.isImposter) };
+  }
+
+  function start(){
+    state = { screen: "round", round: 1, score: 0, current: buildRound(), answered: false };
+    render();
+  }
+
+  function pick(index){
+    if (state.answered) return;
+    state.answered = true;
+    state.pickedIndex = index;
+    if (index === state.current.imposterIndex) state.score += 1;
+    render();
+  }
+
+  function next(){
+    if (state.round >= TOTAL_ROUNDS){
+      state.screen = "end";
+    } else {
+      state.round += 1;
+      state.current = buildRound();
+      state.answered = false;
+      state.pickedIndex = null;
+    }
+    render();
+  }
+
+  function catClass(key){
+    return key === "nonTargeted" ? "class-nonTargeted"
+      : key === "targeted" ? "class-targeted"
+      : key === "hormonal" ? "class-hormonal"
+      : "class-ici";
+  }
+
+  function endMessage(score){
+    const pct = score / TOTAL_ROUNDS;
+    if (pct === 1) return "Perfect run — you know your drug classes cold.";
+    if (pct >= 0.75) return "Strong result — just a couple of mechanisms to firm up.";
+    if (pct >= 0.5) return "Solid start — worth another pass through the four classes.";
+    return "Good first attempt — try mapping each drug to its mechanism before the next round.";
+  }
+
+  function render(){
+    const app = document.getElementById("app");
+
+    if (state.screen === "start"){
+      app.innerHTML = `
+        <h1>Drug Class Imposter</h1>
+        <p class="subtitle">Spot the anticancer drug that doesn't belong.</p>
+        <div class="start">
+          <p>Each round shows four drugs. Three share the same class — one is the imposter. Pick the odd one out, then check the reasoning.</p>
+          <ul>
+            <li>Non-targeted (cytotoxic)</li>
+            <li>Targeted therapy</li>
+            <li>Hormonal therapy</li>
+            <li>Immune checkpoint inhibitor</li>
+          </ul>
+          <div class="actions"><button class="primary" id="startBtn">Start (${TOTAL_ROUNDS} rounds)</button></div>
+        </div>
+      `;
+      document.getElementById("startBtn").onclick = start;
+      return;
+    }
+
+    if (state.screen === "end"){
+      app.innerHTML = `
+        <h1>Drug Class Imposter</h1>
+        <p class="subtitle">Round complete.</p>
+        <div class="end">
+          <div class="score-big">${state.score} / ${TOTAL_ROUNDS}</div>
+          <div class="score-msg">${endMessage(state.score)}</div>
+          <div class="actions"><button class="primary" id="againBtn">Play again</button></div>
+        </div>
+      `;
+      document.getElementById("againBtn").onclick = start;
+      return;
+    }
+
+    // round screen
+    const { cards, imposterIndex, shareKey } = state.current;
+    const answered = state.answered;
+    const pickedIndex = state.pickedIndex;
+    const pickedCorrect = answered && pickedIndex === imposterIndex;
+
+    const cardsHtml = cards.map((c, i) => {
+      const isImposter = i === imposterIndex;
+      let classes = "card";
+      if (answered){
+        classes += " reveal " + catClass(c.classKey);
+        if (i === pickedIndex && isImposter) classes += " correct-pick";
+        else if (i === pickedIndex && !isImposter) classes += " wrong-pick";
+        else if (isImposter && !pickedCorrect) classes += " is-imposter-missed";
+      }
+      const tagLabel = isImposter ? "Imposter — " + CATEGORIES[c.classKey].label : CATEGORIES[c.classKey].label;
+      return `
+        <button class="${classes}" data-idx="${i}" ${answered ? "disabled" : ""}>
+          <span class="key">${i+1}</span>
+          <span class="name">${c.name}</span>
+          <span class="tag">${tagLabel}</span>
+          <span class="why">${c.why}</span>
+        </button>
+      `;
+    }).join("");
+
+    let feedbackHtml = "";
+    if (answered){
+      const sharedLabel = CATEGORIES[shareKey].label;
+      feedbackHtml = `
+        <div class="feedback ${pickedCorrect ? 'correct' : 'wrong'}">
+          <p class="headline">${pickedCorrect ? "Correct — that's the imposter." : "Not quite."}</p>
+          <p>The other three are all <strong>${sharedLabel}</strong>. ${pickedCorrect ? "" : "The imposter was card " + (imposterIndex+1) + " — " + cards[imposterIndex].name + "."}</p>
+        </div>
+      `;
+    }
+
+    app.innerHTML = `
+      <h1>Drug Class Imposter</h1>
+      <p class="subtitle">Three drugs share a class. One doesn't belong.</p>
+      <div class="hud">
+        <span>Round <strong>${state.round}</strong> / ${TOTAL_ROUNDS}</span>
+        <span>Score <strong>${state.score}</strong></span>
+      </div>
+      <div class="progress"><div class="progress-fill" style="width:${(state.round-1)/TOTAL_ROUNDS*100}%"></div></div>
+      <div class="panel">
+        <p class="prompt">Which drug is the imposter?</p>
+        <div class="grid">${cardsHtml}</div>
+        ${feedbackHtml}
+        <div class="actions">
+          ${answered ? `<button class="primary" id="nextBtn">${state.round >= TOTAL_ROUNDS ? "See results" : "Next round"}</button>` : ""}
+        </div>
+      </div>
+    `;
+
+    if (!answered){
+      document.querySelectorAll(".card").forEach(btn => {
+        btn.onclick = () => pick(parseInt(btn.dataset.idx, 10));
+      });
+    } else {
+      document.getElementById("nextBtn").onclick = next;
+    }
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (state.screen !== "round" || state.answered) return;
+    const n = parseInt(e.key, 10);
+    if (n >= 1 && n <= 4) pick(n - 1);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
